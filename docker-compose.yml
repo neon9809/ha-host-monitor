@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  ha-host-monitor:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ha-host-monitor
+    restart: unless-stopped
+    
+    # Mount host system directories for monitoring
+    volumes:
+      # Mount /proc for system metrics (read-only)
+      - /proc:/host/proc:ro
+      # Mount /sys for additional system info (read-only)
+      - /sys:/host/sys:ro
+      # Mount config directory for configuration and error logs
+      - ./config:/app/config
+    
+    # Environment variables (optional, can also be set in config.yml)
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    
+    # Resource limits (optional)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 256M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 128M
+    
+    # Logging configuration (optional)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

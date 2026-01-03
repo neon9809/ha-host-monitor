@@ -1,0 +1,83 @@
+# HA Host Monitor 配置文件
+# 本文件配置要监控哪些系统指标以及上报频率到 Home Assistant
+
+# Home Assistant 配置
+home_assistant:
+  # Home Assistant 实例的 URL
+  url: "http://localhost:8123"
+  
+  # Home Assistant 长期访问令牌
+  # 获取方式：设置 -> 设备与服务 -> 创建令牌（右下角）
+  token: "YOUR_LONG_LIVED_TOKEN_HERE"
+  
+  # 是否验证 SSL 证书（自签名证书时设为 false）
+  verify_ssl: true
+
+# 全局更新频率（秒）
+# 这是所有指标的默认频率，如果未在单个指标中覆盖
+update_frequency: 60
+
+# Home Assistant 传感器实体前缀
+# 所有实体将被命名为：sensor.{entity_prefix}_{metric_name}
+entity_prefix: "host_monitor"
+
+# 指标配置
+# 每个指标都可以单独启用/禁用和配置
+metrics:
+  
+  # CPU 使用率百分比（0-100）
+  cpu_percent:
+    enabled: true
+    frequency: 60  # 每 60 秒更新一次
+  
+  # CPU 核心数
+  cpu_count:
+    enabled: true
+    frequency: 300  # 每 5 分钟更新一次（不经常变化）
+  
+  # 内存使用率百分比（0-100）
+  memory_percent:
+    enabled: true
+    frequency: 60
+  
+  # 可用内存字节数
+  memory_available:
+    enabled: true
+    frequency: 60
+  
+  # 根分区磁盘使用率
+  disk_usage:
+    enabled: true
+    frequency: 300  # 每 5 分钟更新一次
+    path: "/"  # 要检查的路径
+  
+  # 网络 I/O 统计（发送/接收字节数、数据包等）
+  network_io:
+    enabled: true
+    frequency: 60
+  
+  # 系统平均负载（1、5、15 分钟平均值）
+  load_average:
+    enabled: true
+    frequency: 60
+  
+  # 系统运行时间（秒）
+  uptime:
+    enabled: true
+    frequency: 300  # 每 5 分钟更新一次
+  
+  # 系统启动时间（ISO 格式）
+  boot_time:
+    enabled: true
+    frequency: 3600  # 每小时更新一次
+  
+  # 运行中的进程数
+  process_count:
+    enabled: true
+    frequency: 60
+  
+  # CPU 温度（如果传感器可用）
+  # 注意：在某些系统上可能无法工作（如虚拟机）
+  cpu_temp:
+    enabled: false
+    frequency: 60
