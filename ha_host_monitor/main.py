@@ -249,11 +249,17 @@ class HostMonitor:
                             # Format: sensor.{prefix}_{metric_name}
                             metric_name = entity_id.replace(f"sensor.{entity_prefix}_", "")
                             
+                            # Determine device_class for special metrics
+                            device_class = None
+                            if "boot_time" in metric_name:
+                                device_class = "timestamp"
+                            
                             # Send state update
                             self.mqtt_reporter.send_state(
                                 metric_name=metric_name,
                                 value=data["state"],
                                 unit=data.get("unit_of_measurement"),
+                                device_class=device_class,
                             )
                     else:
                         # REST API mode: batch update
@@ -314,10 +320,10 @@ class HostMonitor:
             if key == "percent":
                 return "%"
             else:  # total, used, free
-                return "B"
+                return "GB"
         elif metric_name == "network_io":
             if key.startswith("bytes_"):
-                return "B"
+                return "MB"
             elif key.startswith("packets_"):
                 return "packets"
             else:  # errin, errout, dropin, dropout
@@ -326,7 +332,7 @@ class HostMonitor:
             if key == "percent":
                 return "%"
             else:  # total, available
-                return "B"
+                return "GB"
         elif metric_name == "cpu_temp":
             return "°C"
         return None

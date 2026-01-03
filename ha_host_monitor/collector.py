@@ -168,15 +168,15 @@ class MetricsCollector:
             logger.error(f"Error getting uptime: {e}")
             return None
 
-    def get_boot_time(self) -> Optional[str]:
+    def get_boot_time(self) -> Optional[float]:
         """Get system boot time.
 
         Returns:
-            System boot time as ISO format string or None if failed
+            System boot time as Unix timestamp or None if failed
         """
         try:
             boot_time = psutil.boot_time()
-            return datetime.fromtimestamp(boot_time).isoformat()
+            return boot_time
         except Exception as e:
             logger.error(f"Error getting boot time: {e}")
             return None
