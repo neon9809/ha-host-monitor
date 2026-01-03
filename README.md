@@ -19,70 +19,74 @@ _本项目由 [Manus AI](https://manus.im) 完成开发。_
 
 ## 🚀 快速开始
 
-本工具支持两种上报模式：
+### 步骤 1: 环境配置
 
-1.  **REST API** (默认): 配置简单，只需 Home Assistant URL 和 Token。但实体没有 `unique_id`，无法在 UI 中管理。
-2.  **MQTT Discovery**: 实体有 `unique_id`，可以在 UI 中管理。但需要 MQTT Broker。
+本工具支持两种上报模式，请根据你的需求选择一种。
 
-根据你的需求选择合适的模式。
+#### 模式 1: REST API (默认)
 
-### 模式 1: REST API (默认)
+**优点**: 配置简单，无需额外服务。
+**缺点**: 实体没有 `unique_id`，无法在 Home Assistant UI 中管理。
 
-推荐使用 Docker Compose 进行部署，这是最简单、最直接的方式。
+1.  **创建目录**: 在主机上创建一个目录用于存放配置。
+    ```bash
+    mkdir -p ha-host-monitor/config
+    cd ha-host-monitor
+    ```
 
-### 步骤 1: 创建目录和配置文件
+2.  **下载配置文件**:
+    ```bash
+    wget -O config/config.yml https://raw.githubusercontent.com/neon9809/ha-host-monitor/master/config/config.yml.example
+    ```
 
-首先，在你希望运行监控的主机上创建一个目录，并准备配置文件。
+3.  **编辑配置文件**: 打开 `config/config.yml`，填入你的 Home Assistant URL 和长期访问令牌。
+    ```yaml
+    home_assistant:
+      report_mode: "rest_api"
+      url: "http://your-home-assistant-ip:8123"
+      token: "YOUR_LONG_LIVED_TOKEN_HERE"
+    ```
 
-```bash
-# 1. 创建一个项目目录
-mkdir ha-host-monitor
-cd ha-host-monitor
+#### 模式 2: MQTT Discovery
 
-# 2. 在项目目录内创建 config 目录
-mkdir config
+**优点**: 实体有 `unique_id`，可以在 UI 中管理。
+**缺点**: 需要 MQTT Broker。
 
-# 3. 下载配置文件示例到 config 目录
-wget -O config/config.yml https://raw.githubusercontent.com/neon9809/ha-host-monitor/master/config/config.yml.example
-```
+1.  **前提条件**:
+    -   **MQTT Broker**: 确保你有一个正在运行的 MQTT Broker (例如 [Mosquitto](https://mosquitto.org/))。
+    -   **Home Assistant MQTT 集成**: 在 Home Assistant 中设置好 MQTT 集成。
 
-### 步骤 2: 编辑配置文件
+2.  **创建并编辑配置文件**: 按照模式 1 的步骤创建配置文件，然后修改 `config/config.yml` 如下：
+    ```yaml
+    home_assistant:
+      report_mode: "mqtt"
 
-使用你喜欢的编辑器打开 `config/config.yml` 文件，并填入你的 Home Assistant URL 和长期访问令牌。
+    mqtt:
+      broker: "your-mqtt-broker-ip"
+      port: 1883
+      username: "your-mqtt-username" # (可选)
+      password: "your-mqtt-password" # (可选)
+    ```
 
-```yaml
-home_assistant:
-  # Home Assistant 实例的 URL
-  url: "http://your-home-assistant-ip:8123"
-  
-  # Home Assistant 长期访问令牌
-  token: "YOUR_LONG_LIVED_TOKEN_HERE"
-```
+### 步骤 2: Docker 配置
 
-对于多服务器监控，建议保持 `host_identifier: "auto"`，程序会自动使用主机名作为唯一标识。
-
-### 步骤 3: 创建 `docker-compose.yml` 文件
-
-在项目根目录（`ha-host-monitor/`）下创建一个 `docker-compose.yml` 文件，内容如下：
+在项目根目录（`ha-host-monitor/`）下创建一个 `docker-compose.yml` 文件。
 
 ```yaml
 version: '3.8'
 
 services:
   ha-host-monitor:
-    # 使用 ghcr.io 上的官方镜像，它会自动选择适合你架构的版本
     image: ghcr.io/neon9809/ha-host-monitor:latest
     container_name: ha-host-monitor
     restart: unless-stopped
     volumes:
-      # 挂载系统目录以读取指标
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
-      # 挂载本地配置目录
       - ./config:/app/config
 ```
 
-### 步骤 4: 启动容器
+### 步骤 3: 启动容器
 
 在 `docker-compose.yml` 文件所在的目录中，运行以下命令：
 
@@ -121,19 +125,10 @@ host_identifier: "auto"                # 主机标识符（"auto" 或自定义�
 
 ```yaml
 metrics:
-  # ... 其他指标
-
-  # 示例：禁用 CPU 温度监控
   cpu_temp:
     enabled: false
     frequency: 60
 ```
-
-这样做的好处是：
-- **配置清晰**：你可以清楚地看到所有可用的指标及其状态。
-- **易于重新启用**：未来如果需要，只需将 `false` 改回 `true` 即可。
-
-如果你直接删除配置块，程序在启动时会使用默认配置（其中某些指标可能默认启用或禁用），这可能会导致混淆。
 
 ### 多服务器配置
 
@@ -166,12 +161,6 @@ metrics:
 
 `sensor.{hostname}_monitor_{metric_name}`
 
-例如，如果主机名为 `web-server`：
-
-- `sensor.web_server_monitor_cpu_percent`
-- `sensor.web_server_monitor_memory_percent`
-- `sensor.web_server_monitor_disk_usage`
-
 ### 示例：创建仪表板卡片
 
 ```yaml
@@ -188,18 +177,12 @@ entities:
     name: 系统负载
 ```
 
-**注意**：将 `web_server` 替换为你的实际主机名或自定义标识符。
-
 ## 🪵 查看日志
 
 如果遇到问题，可以查看容器的日志。
 
 ```bash
-# 查看实时日志
 docker-compose logs -f
-
-# 如果没有使用 docker-compose
-docker logs -f ha-host-monitor
 ```
 
 错误日志也会被写入到 `config/error.log` 文件中。
@@ -211,34 +194,3 @@ docker logs -f ha-host-monitor
 ## 📄 许可证
 
 本项目使用 [MIT 许可证](LICENSE)。
-
-
-### 模式 2: MQTT Discovery
-
-如果你需要 `unique_id` 支持，可以使用 MQTT Discovery 模式。
-
-#### 前提条件
-
-1.  **MQTT Broker**: 你需要一个正在运行的 MQTT Broker (例如 [Mosquitto](https://mosquitto.org/))。
-2.  **Home Assistant MQTT 集成**: 在 Home Assistant 中设置好 MQTT 集成。
-
-#### 步骤 1: 编辑配置文件
-
-在 `config/config.yml` 中，进行以下修改：
-
-```yaml
-home_assistant:
-  # 1. 将报告模式改为 "mqtt"
-  report_mode: "mqtt"
-
-# 2. 填入你的 MQTT Broker 信息
-mqtt:
-  broker: "your-mqtt-broker-ip"
-  port: 1883
-  username: "your-mqtt-username" # (可选)
-  password: "your-mqtt-password" # (可选)
-```
-
-#### 步骤 2: 启动容器
-
-与 REST API 模式一样，使用 `docker-compose up -d` 启动容器即可。
