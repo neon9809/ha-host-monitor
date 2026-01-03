@@ -156,5 +156,7 @@ class DataFormatter:
             return "processes"
         elif metric_name == "cpu_count":
             return "cores"
+        elif metric_name == "cpu_temp":
+            return "°C"
 
         return None

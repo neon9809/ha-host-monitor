@@ -193,11 +193,12 @@ class MetricsCollector:
             logger.error(f"Error getting process count: {e}")
             return None
 
-    def get_cpu_temp(self) -> Optional[Dict[str, Any]]:
+    def get_cpu_temp(self) -> Optional[Dict[str, float]]:
         """Get CPU temperature.
 
         Returns:
-            Dictionary with CPU temperature info or None if failed
+            Flattened dictionary with current CPU temperatures or None if failed
+            Format: {"sensor_name_label": temperature_value, ...}
         """
         try:
             temps = psutil.sensors_temperatures()
@@ -207,16 +208,15 @@ class MetricsCollector:
 
             result = {}
             for name, entries in temps.items():
-                result[name] = []
-                for entry in entries:
-                    result[name].append(
-                        {
-                            "label": entry.label or "unknown",
-                            "current": entry.current,
-                            "high": entry.high,
-                            "critical": entry.critical,
-                        }
-                    )
+                for idx, entry in enumerate(entries):
+                    # Create a clean sensor name
+                    label = (entry.label or f"sensor{idx}").lower().replace(" ", "_")
+                    sensor_key = f"{name}_{label}"
+                    
+                    # Add only current temperature
+                    if entry.current is not None:
+                        result[sensor_key] = round(entry.current, 2)
+            
             return result if result else None
         except Exception as e:
             logger.error(f"Error getting CPU temperature: {e}")
