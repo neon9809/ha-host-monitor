@@ -1,64 +1,68 @@
-# ===================================================================
-# HA Host Monitor - 配置文件示例
-# ===================================================================
+# HA Host Monitor Configuration
 
 home_assistant:
-  # 报告模式: "rest_api" 或 "mqtt"
-  # - rest_api: (默认) 直接通过 Home Assistant REST API 上报，配置简单，但实体没有唯一ID。
-  # - mqtt: 通过 MQTT Discovery 上报，实体有唯一ID，但需要 MQTT Broker。
+  # Report mode: "rest_api" or "mqtt"
+  # - rest_api: Direct to Home Assistant API (default, simple)
+  # - mqtt: Use MQTT Discovery (recommended for UI management)
   report_mode: "rest_api"
 
-  # --- REST API 模式配置 ---
-  # Home Assistant 的 URL
+  # --- REST API Settings (only used if report_mode is "rest_api") ---
   url: "http://homeassistant.local:8123"
-  # 长期访问令牌 (Long-Lived Access Token)
-  token: "YOUR_HA_TOKEN"
-  # 是否验证 SSL 证书 (如果使用自签名证书，请设为 false)
-  verify_ssl: true
+  token: "YOUR_LONG_LIVED_ACCESS_TOKEN"
 
-# --- MQTT 模式配置 ---
+# --- MQTT Settings (only used if report_mode is "mqtt") ---
 mqtt:
-  # MQTT Broker 的地址
   broker: "localhost"
-  # MQTT Broker 的端口
   port: 1883
-  # MQTT 用户名 (可选)
   username: ""
-  # MQTT 密码 (可选)
   password: ""
-  # MQTT Discovery 的前缀 (通常保持默认)
   discovery_prefix: "homeassistant"
-  # MQTT 客户端 ID (可选, 留空则自动生成)
-  client_id: ""
+  client_id: ""  # Auto-generated if empty
 
-# 全局更新频率 (秒)
-# 单个指标可以覆盖此设置
+# --- General Settings ---
+
+# Update frequency for all metrics (in seconds)
+# This is a global fallback; each metric can have its own frequency
 update_frequency: 60
 
-# 主机标识符
-# - "auto": (推荐) 自动使用主机名作为前缀 (例如: sensor.my_server_monitor_cpu_percent)
-# - 自定义名称: "web-server-01" (结果: sensor.web_server_01_monitor_cpu_percent)
+# Host identifier for Home Assistant entities
+# - "auto": Use the container hostname (recommended)
+# - "your-custom-name": Use a custom name
 host_identifier: "auto"
 
-# ===================================================================
-# 指标配置
-# ===================================================================
-# enabled: true/false - 是否启用该指标
-# frequency: (可选) 单独设置该指标的更新频率 (秒)
-# ===================================================================
+# --- Formatting Settings ---
+
+formatting:
+  # Unit for disk usage metrics (total, used, free)
+  # Options: B, KB, MB, GB, TB
+  disk_unit: "GB"
+
+  # Unit for memory_available metric
+  # Options: B, KB, MB, GB
+  memory_unit: "GB"
+
+  # Unit for network I/O metrics (bytes_sent, bytes_recv)
+  # Options: B, KB, MB, GB
+  network_unit: "MB"
+
+  # Number of decimal places for float values (e.g., load average)
+  decimal_places: 2
+
+# --- Metrics Settings ---
+
 metrics:
-  # --- CPU 指标 ---
+  # CPU Metrics
   cpu_percent:
     enabled: true
     frequency: 60
   cpu_count:
     enabled: true
-    frequency: 3600 # CPU核心数通常不变，可以设置很长的更新间隔
+    frequency: 300
   cpu_temp:
-    enabled: false # 默认禁用，需要 lm-sensors
+    enabled: false  # Disabled by default, may not work on all systems
     frequency: 60
 
-  # --- 内存指标 ---
+  # Memory Metrics
   memory_percent:
     enabled: true
     frequency: 60
@@ -66,27 +70,27 @@ metrics:
     enabled: true
     frequency: 60
 
-  # --- 磁盘指标 ---
+  # Disk Metrics
   disk_usage:
     enabled: true
     frequency: 300
-    path: "/" # 要监控的磁盘路径
+    path: "/"  # Path to monitor
 
-  # --- 网络指标 ---
+  # Network Metrics
   network_io:
     enabled: true
     frequency: 60
 
-  # --- 系统指标 ---
+  # System Metrics
   load_average:
     enabled: true
     frequency: 60
   uptime:
     enabled: true
     frequency: 300
-  process_count:
-    enabled: true
-    frequency: 300
   boot_time:
     enabled: true
     frequency: 3600
+  process_count:
+    enabled: true
+    frequency: 60

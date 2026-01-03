@@ -34,6 +34,12 @@ class ConfigManager:
         },
         "update_frequency": 60,  # seconds
         "host_identifier": "auto",  # "auto" to use hostname, or specify custom name
+        "formatting": {
+            "disk_unit": "GB",  # B, KB, MB, GB, TB
+            "memory_unit": "GB",  # B, KB, MB, GB
+            "network_unit": "MB",  # B, KB, MB, GB
+            "decimal_places": 2,  # Number of decimal places for float values
+        },
         "metrics": {
             "cpu_percent": {
                 "enabled": True,

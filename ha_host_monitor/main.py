@@ -14,6 +14,7 @@ from .config import ConfigManager
 from .collector import MetricsCollector
 from .hass import HomeAssistantNotifier
 from .mqtt_reporter import MQTTReporter
+from .formatter import DataFormatter
 
 # Configure logging
 logging.basicConfig(
@@ -66,6 +67,9 @@ class HostMonitor:
 
         # Initialize collector
         self.collector = MetricsCollector(procfs_path="/host/proc")
+        
+        # Initialize formatter
+        self.formatter = DataFormatter(self.config)
 
         # Get report mode
         ha_config = self.config.get("home_assistant", {})
@@ -198,13 +202,23 @@ class HostMonitor:
                             f"Failed to collect metric: {metric_name}"
                         )
                         continue
+                    
+                    # Apply formatting to specific metrics
+                    if metric_name == "disk_usage" and isinstance(value, dict):
+                        value = self.formatter.format_disk_usage(value)
+                    elif metric_name == "network_io" and isinstance(value, dict):
+                        value = self.formatter.format_network_io(value)
+                    elif metric_name == "load_average" and isinstance(value, dict):
+                        value = self.formatter.format_load_average(value)
+                    elif metric_name == "memory_available" and isinstance(value, (int, float)):
+                        value = self.formatter.format_memory(value)
 
                     # Prepare entity ID and attributes
                     entity_id = f"sensor.{entity_prefix}_{metric_name}"
                     attributes = {"last_updated": datetime.now().isoformat()}
 
                     # Add unit of measurement based on metric type
-                    unit = self._get_unit_for_metric(metric_name)
+                    unit = self.formatter.get_unit_for_metric(metric_name)
 
                     # Handle different metric types
                     if isinstance(value, dict):
@@ -213,7 +227,7 @@ class HostMonitor:
                             for key, val in value.items():
                                 sub_entity_id = f"sensor.{entity_prefix}_{metric_name}_{key}"
                                 # Determine unit for sub-metric
-                                sub_unit = self._get_unit_for_submetric(metric_name, key)
+                                sub_unit = self.formatter.get_unit_for_metric(metric_name, key)
                                 updates[sub_entity_id] = {
                                     "state": val,
                                     "attributes": {

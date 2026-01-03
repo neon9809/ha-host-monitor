@@ -96,6 +96,18 @@ docker-compose up -d
 
 配置文件位于 `config/config.yml`。
 
+### 格式化选项
+
+你可以在 `formatting` 部分自定义单位和精度：
+
+```yaml
+formatting:
+  disk_unit: "GB"      # B, KB, MB, GB, TB
+  memory_unit: "GB"    # B, KB, MB, GB
+  network_unit: "MB"   # B, KB, MB, GB
+  decimal_places: 2    # 小数位数
+```
+
 ### 全局设置
 
 ```yaml
