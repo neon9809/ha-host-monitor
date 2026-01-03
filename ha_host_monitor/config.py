@@ -198,12 +198,24 @@ class ConfigManager:
         Returns:
             Tuple of (is_valid, error_message)
         """
-        # Check required fields
-        if not config.get("home_assistant", {}).get("url"):
-            return False, "Missing home_assistant.url"
-
-        if not config.get("home_assistant", {}).get("token"):
-            return False, "Missing home_assistant.token"
+        # Get report mode
+        report_mode = config.get("home_assistant", {}).get("report_mode", "rest_api")
+        
+        # Validate based on report mode
+        if report_mode == "rest_api":
+            # REST API mode requires URL and token
+            if not config.get("home_assistant", {}).get("url"):
+                return False, "Missing home_assistant.url (required for REST API mode)"
+            if not config.get("home_assistant", {}).get("token"):
+                return False, "Missing home_assistant.token (required for REST API mode)"
+        
+        elif report_mode == "mqtt":
+            # MQTT mode requires broker
+            if not config.get("mqtt", {}).get("broker"):
+                return False, "Missing mqtt.broker (required for MQTT mode)"
+        
+        else:
+            return False, f"Invalid report_mode: {report_mode}. Must be 'rest_api' or 'mqtt'"
 
         # Validate update frequency
         if not isinstance(config.get("update_frequency", 60), (int, float)):
