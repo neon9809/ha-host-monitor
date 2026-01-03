@@ -18,6 +18,7 @@ class HomeAssistantNotifier:
         self,
         url: str,
         token: str,
+        entity_prefix: str = "host_monitor",
         verify_ssl: bool = True,
         timeout: int = 10,
     ):
@@ -31,6 +32,7 @@ class HomeAssistantNotifier:
         """
         self.url = url.rstrip("/")
         self.token = token
+        self.entity_prefix = entity_prefix
         self.verify_ssl = verify_ssl
         self.timeout = timeout
         self.session = requests.Session()
@@ -89,6 +91,11 @@ class HomeAssistantNotifier:
         # Add unit of measurement if provided
         if unit_of_measurement:
             attributes["unit_of_measurement"] = unit_of_measurement
+
+        # Add unique_id for Home Assistant UI management
+        if "unique_id" not in attributes:
+            # Generate unique_id based on entity_id
+            attributes["unique_id"] = entity_id.replace("sensor.", "")
 
         # Add friendly name
         if "friendly_name" not in attributes:

@@ -68,9 +68,11 @@ class HostMonitor:
 
         # Initialize Home Assistant notifier
         ha_config = self.config.get("home_assistant", {})
+        entity_prefix = self.config.get("entity_prefix", "host_monitor")
         self.notifier = HomeAssistantNotifier(
             url=ha_config.get("url"),
             token=ha_config.get("token"),
+            entity_prefix=entity_prefix,
             verify_ssl=ha_config.get("verify_ssl", True),
         )
 
