@@ -4,8 +4,10 @@ Handles loading, validation, and default configuration generation.
 """
 
 import os
+import socket
 import yaml
 import logging
+import re
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -22,6 +24,7 @@ class ConfigManager:
             "verify_ssl": True,
         },
         "update_frequency": 60,  # seconds
+        "host_identifier": "auto",  # "auto" to use hostname, or specify custom name
         "metrics": {
             "cpu_percent": {
                 "enabled": True,
@@ -69,7 +72,6 @@ class ConfigManager:
                 "frequency": 60,
             },
         },
-        "entity_prefix": "host_monitor",
     }
 
     def __init__(self, config_dir: str = "/app/config"):
@@ -98,6 +100,8 @@ class ConfigManager:
                         config = {}
                     # Merge with defaults to ensure all keys exist
                     config = self._merge_configs(self.DEFAULT_CONFIG, config)
+                    # Resolve host identifier
+                    config = self._resolve_host_identifier(config)
                     return config
             except Exception as e:
                 logger.error(f"Error loading config file: {e}")
@@ -117,6 +121,64 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Error creating default config: {e}")
             self._write_error_log(f"Failed to create default config: {e}")
+
+    def _get_hostname(self) -> str:
+        """Get the hostname of the system.
+
+        Returns:
+            Sanitized hostname suitable for use in entity IDs
+        """
+        try:
+            # Try to get hostname from environment variable first (Docker container name)
+            hostname = os.environ.get('HOSTNAME', '')
+            
+            if not hostname:
+                # Fall back to socket.gethostname()
+                hostname = socket.gethostname()
+            
+            # Sanitize hostname for use in entity IDs
+            # Replace invalid characters with underscores
+            hostname = re.sub(r'[^a-z0-9_]', '_', hostname.lower())
+            
+            # Remove leading/trailing underscores
+            hostname = hostname.strip('_')
+            
+            # If hostname is empty after sanitization, use default
+            if not hostname:
+                hostname = "host"
+            
+            logger.info(f"Detected hostname: {hostname}")
+            return hostname
+            
+        except Exception as e:
+            logger.warning(f"Failed to get hostname: {e}, using default 'host'")
+            return "host"
+
+    def _resolve_host_identifier(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Resolve host identifier to actual hostname if set to 'auto'.
+
+        Args:
+            config: Configuration dictionary
+
+        Returns:
+            Configuration with resolved host_identifier
+        """
+        host_id = config.get("host_identifier", "auto")
+        
+        if host_id == "auto":
+            # Auto-detect hostname
+            hostname = self._get_hostname()
+            config["entity_prefix"] = f"{hostname}_monitor"
+            logger.info(f"Auto-detected entity prefix: {config['entity_prefix']}")
+        else:
+            # Use custom identifier
+            # Sanitize custom identifier
+            sanitized = re.sub(r'[^a-z0-9_]', '_', host_id.lower())
+            sanitized = sanitized.strip('_')
+            config["entity_prefix"] = f"{sanitized}_monitor"
+            logger.info(f"Using custom entity prefix: {config['entity_prefix']}")
+        
+        return config
 
     def validate_config(self, config: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate configuration.

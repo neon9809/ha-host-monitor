@@ -118,8 +118,32 @@ home_assistant:
 
 ```yaml
 update_frequency: 60                   # 默认更新频率（秒）
-entity_prefix: "host_monitor"          # 传感器实体前缀
+host_identifier: "auto"                # 主机标识符（"auto" 或自定义名称）
 ```
+
+### 多服务器配置
+
+如果你有多个 Linux 服务器需要监控，每个服务器都需要有唯一的 `host_identifier`：
+
+**方法 1：自动使用主机名（推荐）**
+
+```yaml
+host_identifier: "auto"  # 自动使用主机的 hostname
+```
+
+结果：
+- 服务器 hostname 为 `web-server`：`sensor.web_server_monitor_cpu_percent`
+- 服务器 hostname 为 `db-server`：`sensor.db_server_monitor_cpu_percent`
+
+**方法 2：手动指定标识符**
+
+```yaml
+host_identifier: "web-server-01"  # 自定义名称
+```
+
+结果：`sensor.web_server_01_monitor_cpu_percent`
+
+**注意**：如果多个服务器使用相同的 `host_identifier`，它们的数据会互相覆盖！
 
 ### 指标配置
 
@@ -150,17 +174,23 @@ metrics:
 
 ## Home Assistant 集成
 
-运行后，传感器将自动出现在 Home Assistant 中，命名为：
+运行后，传感器将自动出现在 Home Assistant 中。传感器命名格式为：
 
-- `sensor.host_monitor_cpu_percent`
-- `sensor.host_monitor_memory_percent`
-- `sensor.host_monitor_disk_usage`
-- `sensor.host_monitor_network_io`
-- `sensor.host_monitor_load_average`
-- `sensor.host_monitor_uptime`
-- `sensor.host_monitor_boot_time`
-- `sensor.host_monitor_process_count`
+`sensor.{hostname}_monitor_{metric_name}`
+
+例如，如果主机名为 `web-server`：
+
+- `sensor.web_server_monitor_cpu_percent`
+- `sensor.web_server_monitor_memory_percent`
+- `sensor.web_server_monitor_disk_usage`
+- `sensor.web_server_monitor_network_io`
+- `sensor.web_server_monitor_load_average`
+- `sensor.web_server_monitor_uptime`
+- `sensor.web_server_monitor_boot_time`
+- `sensor.web_server_monitor_process_count`
 - 等等
+
+如果你自定义了 `host_identifier`，则使用你指定的名称。
 
 你可以在以下地方使用这些传感器：
 - 自动化
@@ -173,13 +203,19 @@ metrics:
 
 ```yaml
 type: entities
-title: 主机监控
+title: 主机监控 - Web 服务器
 entities:
-  - entity: sensor.host_monitor_cpu_percent
-  - entity: sensor.host_monitor_memory_percent
-  - entity: sensor.host_monitor_disk_usage
-  - entity: sensor.host_monitor_load_average
+  - entity: sensor.web_server_monitor_cpu_percent
+    name: CPU 使用率
+  - entity: sensor.web_server_monitor_memory_percent
+    name: 内存使用率
+  - entity: sensor.web_server_monitor_disk_usage
+    name: 磁盘使用率
+  - entity: sensor.web_server_monitor_load_average
+    name: 系统负载
 ```
+
+**注意**：将 `web_server` 替换为你的实际主机名或自定义标识符。
 
 ## Docker Compose 选项
 

@@ -17,9 +17,15 @@ home_assistant:
 # 这是所有指标的默认频率，如果未在单个指标中覆盖
 update_frequency: 60
 
-# Home Assistant 传感器实体前缀
-# 所有实体将被命名为：sensor.{entity_prefix}_{metric_name}
-entity_prefix: "host_monitor"
+# 主机标识符
+# 用于区分多个服务器，避免 entity ID 冲突
+# - "auto": 自动使用主机名（推荐）
+# - 自定义名称: 例如 "web-server-01"、"database-server" 等
+# 
+# 示例：
+#   host_identifier: "auto"           -> entity: sensor.hostname_monitor_cpu_percent
+#   host_identifier: "web-server-01"  -> entity: sensor.web_server_01_monitor_cpu_percent
+host_identifier: "auto"
 
 # 指标配置
 # 每个指标都可以单独启用/禁用和配置
