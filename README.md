@@ -1,118 +1,91 @@
-# HA Host Monitor
+_本项目由 [Manus AI](https://manus.im) 完成开发。_
 
-一个基于 Docker 的 Linux 系统监控工具，可以通过 REST API 将各种系统指标报告到 Home Assistant。在 Home Assistant 中集中监控 CPU 使用率、内存、磁盘空间、网络活动等系统信息。
+# HA Host Monitor - Home Assistant 主机监控
 
-**本项目由 Manus AI 完成开发。**
+一个基于 Docker 的 Linux 系统监控工具，可以将各种系统指标（CPU、内存、磁盘、网络、负载等）实时上报到 [Home Assistant](https://www.home-assistant.io/)。
 
-## 功能特性
+![HA Host Monitor](https://user-images.githubusercontent.com/12345/67890.png) <!--- Placeholder for a future screenshot -->
 
-- **实时系统监控**：采集 CPU、内存、磁盘、网络和系统负载等指标
-- **Home Assistant 集成**：将指标作为传感器报告到 Home Assistant
-- **灵活配置**：基于 YAML 的配置文件，易于自定义
-- **单个指标频率控制**：为不同指标设置不同的更新频率
-- **自动启动测试**：测试系统上哪些指标可用
-- **错误日志**：详细的错误日志便于故障排查
-- **Docker 支持**：在 Docker 容器中运行，正确挂载宿主机文件系统
-- **轻量级**：基于 Python 3.11-slim 镜像
+## ✨ 功能特性
 
-## 支持的指标
+- **多架构支持**: 支持 `linux/amd64` (x86-64) 和 `linux/arm64` (aarch64) 架构。
+- **实时系统监控**: 采集 12 项核心系统指标。
+- **Home Assistant 集成**: 自动创建和更新传感器实体。
+- **多服务器支持**: 通过自动主机名检测，轻松监控多个服务器而不会冲突。
+- **灵活配置**: 使用 YAML 文件进行配置，可独立控制每个指标的开关和更新频率。
+- **错误处理**: 启动时自动测试，并将错误写入日志文件。
+- **轻量级**: 基于 `python:3.11-slim` 的轻量级 Docker 镜像。
+- **自动化**: 通过 GitHub Actions 自动构建和发布多架构镜像。
 
-- **CPU**：使用率百分比、核心数
-- **内存**：使用率百分比、可用内存
-- **磁盘**：指定路径的使用率百分比
-- **网络**：I/O 统计（发送/接收字节数、数据包、错误等）
-- **系统**：平均负载、运行时间、启动时间、进程数
-- **温度**：CPU 温度（如果系统支持）
+## 🚀 快速开始
 
-## 前置要求
+推荐使用 Docker Compose 进行部署，这是最简单、最直接的方式。
 
-- 已安装 Docker 和 Docker Compose
-- Home Assistant 实例正在运行且可访问
-- Home Assistant 长期访问令牌
+### 步骤 1: 创建目录和配置文件
 
-### 获取 Home Assistant 令牌
-
-1. 打开 Home Assistant 网页界面
-2. 点击左下角的个人资料图标
-3. 向下滚动到"长期访问令牌"
-4. 点击"创建令牌"
-5. 输入名称（例如"Host Monitor"）
-6. 复制令牌（之后无法再次查看）
-
-## 安装
-
-### 1. 克隆或下载项目
+首先，在你希望运行监控的主机上创建一个目录，并准备配置文件。
 
 ```bash
-git clone https://github.com/neon9809/ha-host-monitor.git
+# 1. 创建一个项目目录
+mkdir ha-host-monitor
 cd ha-host-monitor
+
+# 2. 在项目目录内创建 config 目录
+mkdir config
+
+# 3. 下载配置文件示例到 config 目录
+wget -O config/config.yml https://raw.githubusercontent.com/neon9809/ha-host-monitor/master/config/config.yml.example
 ```
 
-### 2. 配置应用
+### 步骤 2: 编辑配置文件
 
-复制配置示例：
-
-```bash
-cp config/config.yml.example config/config.yml
-```
-
-编辑 `config/config.yml`，填入你的 Home Assistant 信息：
+使用你喜欢的编辑器打开 `config/config.yml` 文件，并填入你的 Home Assistant URL 和长期访问令牌。
 
 ```yaml
 home_assistant:
-  url: "http://192.168.1.100:8123"  # 你的 Home Assistant 地址
-  token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."  # 你的令牌
-  verify_ssl: true
-
-update_frequency: 60  # 全局更新频率（秒）
-
-metrics:
-  cpu_percent:
-    enabled: true
-    frequency: 60
-  memory_percent:
-    enabled: true
-    frequency: 60
-  # ... 配置其他指标
+  # Home Assistant 实例的 URL
+  url: "http://your-home-assistant-ip:8123"
+  
+  # Home Assistant 长期访问令牌
+  token: "YOUR_LONG_LIVED_TOKEN_HERE"
 ```
 
-### 3. 使用 Docker Compose 运行
+对于多服务器监控，建议保持 `host_identifier: "auto"`，程序会自动使用主机名作为唯一标识。
+
+### 步骤 3: 创建 `docker-compose.yml` 文件
+
+在项目根目录（`ha-host-monitor/`）下创建一个 `docker-compose.yml` 文件，内容如下：
+
+```yaml
+version: '3.8'
+
+services:
+  ha-host-monitor:
+    # 使用 ghcr.io 上的官方镜像，它会自动选择适合你架构的版本
+    image: ghcr.io/neon9809/ha-host-monitor:latest
+    container_name: ha-host-monitor
+    restart: unless-stopped
+    volumes:
+      # 挂载系统目录以读取指标
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      # 挂载本地配置目录
+      - ./config:/app/config
+```
+
+### 步骤 4: 启动容器
+
+在 `docker-compose.yml` 文件所在的目录中，运行以下命令：
 
 ```bash
 docker-compose up -d
 ```
 
-这将：
-- 构建 Docker 镜像
-- 启动容器
-- 挂载宿主机的 `/proc` 和 `/sys` 目录（只读）
-- 挂载 `config` 目录用于配置和错误日志
+现在，容器已经开始在后台运行，并向你的 Home Assistant 发送数据了！
 
-### 4. 查看日志
+## ⚙️ 配置详解
 
-```bash
-docker-compose logs -f ha-host-monitor
-```
-
-### 5. 首次运行
-
-首次运行时，应用将：
-1. 加载或创建默认配置
-2. 测试所有可用指标并报告哪些可用
-3. 开始监控并向 Home Assistant 报告
-
-查看输出中是否有指标加载失败。这些错误也会被记录到 `config/error.log`。
-
-## 配置指南
-
-### Home Assistant 设置
-
-```yaml
-home_assistant:
-  url: "http://localhost:8123"        # Home Assistant 地址
-  token: "YOUR_TOKEN_HERE"             # 长期访问令牌
-  verify_ssl: true                     # 自签名证书时设为 false
-```
+配置文件位于 `config/config.yml`。
 
 ### 全局设置
 
@@ -123,56 +96,30 @@ host_identifier: "auto"                # 主机标识符（"auto" 或自定义�
 
 ### 多服务器配置
 
-如果你有多个 Linux 服务器需要监控，每个服务器都需要有唯一的 `host_identifier`：
+如果你有多个 Linux 服务器需要监控，`host_identifier` 字段可以帮助你区分它们。
 
-**方法 1：自动使用主机名（推荐）**
+- **自动模式 (推荐)**: `host_identifier: "auto"` 会自动使用主机的 `hostname` 作为标识。
+- **手动模式**: 你可以为每个服务器设置一个唯一的名称，如 `host_identifier: "web-server-01"`。
 
-```yaml
-host_identifier: "auto"  # 自动使用主机的 hostname
-```
+**注意**：如果多个服务器使用相同的 `host_identifier`，它们的数据会在 Home Assistant 中互相覆盖！
 
-结果：
-- 服务器 hostname 为 `web-server`：`sensor.web_server_monitor_cpu_percent`
-- 服务器 hostname 为 `db-server`：`sensor.db_server_monitor_cpu_percent`
+## 📊 可用指标
 
-**方法 2：手动指定标识符**
+| 指标名称 | 单位 | 描述 |
+|---|---|---|
+| `cpu_percent` | % | CPU 使用率 |
+| `cpu_count` | 个 | CPU 核心数 |
+| `memory_percent` | % | 内存使用率 |
+| `memory_available` | Bytes | 可用内存 |
+| `disk_usage` | % | 根分区磁盘使用率 |
+| `network_io` | 字典 | 网络 I/O 统计 |
+| `load_average` | 字典 | 系统平均负载 (1, 5, 15分钟) |
+| `uptime` | 秒 | 系统运行时间 |
+| `boot_time` | ISO 格式 | 系统启动时间 |
+| `process_count` | 个 | 运行中的进程数 |
+| `cpu_temp` | °C | CPU 温度 (如果可用) |
 
-```yaml
-host_identifier: "web-server-01"  # 自定义名称
-```
-
-结果：`sensor.web_server_01_monitor_cpu_percent`
-
-**注意**：如果多个服务器使用相同的 `host_identifier`，它们的数据会互相覆盖！
-
-### 指标配置
-
-每个指标都可以单独配置：
-
-```yaml
-metrics:
-  cpu_percent:
-    enabled: true                      # 启用/禁用此指标
-    frequency: 60                      # 更新频率（秒）
-```
-
-### 可用指标
-
-| 指标 | 类型 | 单位 | 说明 |
-|------|------|------|------|
-| `cpu_percent` | 浮点数 | % | CPU 使用率 0-100 |
-| `cpu_count` | 整数 | 核 | 逻辑核心数 |
-| `memory_percent` | 浮点数 | % | 内存使用率 0-100 |
-| `memory_available` | 整数 | B | 可用内存字节数 |
-| `disk_usage` | 字典 | % | 指定路径的磁盘使用率 |
-| `network_io` | 字典 | B | 网络统计 |
-| `load_average` | 字典 | load | 1、5、15 分钟平均负载 |
-| `uptime` | 整数 | s | 系统运行时间（秒） |
-| `boot_time` | 字符串 | ISO | 系统启动时间 |
-| `process_count` | 整数 | 进程 | 运行中的进程数 |
-| `cpu_temp` | 字典 | °C | CPU 温度（如果可用） |
-
-## Home Assistant 集成
+## 🏠 Home Assistant 集成
 
 运行后，传感器将自动出现在 Home Assistant 中。传感器命名格式为：
 
@@ -183,21 +130,6 @@ metrics:
 - `sensor.web_server_monitor_cpu_percent`
 - `sensor.web_server_monitor_memory_percent`
 - `sensor.web_server_monitor_disk_usage`
-- `sensor.web_server_monitor_network_io`
-- `sensor.web_server_monitor_load_average`
-- `sensor.web_server_monitor_uptime`
-- `sensor.web_server_monitor_boot_time`
-- `sensor.web_server_monitor_process_count`
-- 等等
-
-如果你自定义了 `host_identifier`，则使用你指定的名称。
-
-你可以在以下地方使用这些传感器：
-- 自动化
-- 模板
-- 仪表板
-- 历史统计
-- 等等
 
 ### 示例：创建仪表板卡片
 
@@ -217,204 +149,24 @@ entities:
 
 **注意**：将 `web_server` 替换为你的实际主机名或自定义标识符。
 
-## Docker Compose 选项
+## 🪵 查看日志
 
-### 自定义路径
-
-要监控不同的根路径的磁盘使用情况，编辑 `docker-compose.yml`：
-
-```yaml
-environment:
-  - DISK_PATH=/home
-```
-
-### 资源限制
-
-在 `docker-compose.yml` 中取消注释并调整：
-
-```yaml
-deploy:
-  resources:
-    limits:
-      cpus: '0.5'
-      memory: 256M
-```
-
-### 网络配置
-
-如果 Home Assistant 在不同的网络上：
-
-```yaml
-networks:
-  - default
-  - home_assistant_network
-
-networks:
-  home_assistant_network:
-    external: true
-```
-
-## 故障排查
-
-### 无法连接到 Home Assistant
-
-1. 检查 Home Assistant 地址和端口是否正确
-2. 验证长期令牌是否有效
-3. 查看 `config/error.log` 中的详细错误信息
-4. 如果使用自签名证书，尝试设置 `verify_ssl: false`
-
-### 传感器未出现
-
-1. 检查 `config/config.yml` 中指标是否启用
-2. 查看 `config/error.log` 中的指标采集错误
-3. 检查容器日志：`docker-compose logs ha-host-monitor`
-4. 确保 `/proc` 和 `/sys` 已正确挂载
-
-### CPU 温度不工作
-
-CPU 温度需要：
-- 硬件传感器（虚拟机或容器中通常不可用）
-- 正确的权限读取传感器数据
-- 在虚拟机上无法工作是正常的
-
-### 权限拒绝错误
-
-容器以 root 身份运行以访问系统文件。如果看到权限错误：
-
-1. 确保 `/proc` 和 `/sys` 可读
-2. 检查宿主机上的文件权限
-3. 尝试以提升的权限运行
-
-## 手动 Docker 运行
-
-如果不想使用 Docker Compose：
+如果遇到问题，可以查看容器的日志。
 
 ```bash
-docker build -t ha-host-monitor .
+# 查看实时日志
+docker-compose logs -f
 
-docker run -d \
-  --name ha-host-monitor \
-  --restart unless-stopped \
-  -v /proc:/host/proc:ro \
-  -v /sys:/host/sys:ro \
-  -v $(pwd)/config:/app/config \
-  ha-host-monitor
+# 如果没有使用 docker-compose
+docker logs -f ha-host-monitor
 ```
 
-## 开发
+错误日志也会被写入到 `config/error.log` 文件中。
 
-### 本地测试
+## 🤝 贡献
 
-```bash
-# 安装依赖
-pip install -r requirements.txt
+欢迎提交 Pull Requests 或在 Issues 中报告问题。
 
-# 直接运行（需要 /proc 和 /sys 访问权限）
-python -m ha_host_monitor.main
-```
+## 📄 许可证
 
-### 项目结构
-
-```
-ha-host-monitor/
-├── ha_host_monitor/
-│   ├── __init__.py           # 包初始化
-│   ├── main.py               # 主程序入口
-│   ├── collector.py          # 系统指标采集
-│   ├── hass.py               # Home Assistant API 集成
-│   └── config.py             # 配置管理
-├── config/
-│   └── config.yml.example    # 配置模板
-├── Dockerfile                # Docker 镜像定义
-├── docker-compose.yml        # Docker Compose 配置
-├── requirements.txt          # Python 依赖
-└── README.md                 # 本文件
-```
-
-## API 参考
-
-### MetricsCollector
-
-系统指标采集的主类：
-
-```python
-from ha_host_monitor.collector import MetricsCollector
-
-collector = MetricsCollector()
-cpu = collector.get_cpu_percent()
-memory = collector.get_memory_percent()
-```
-
-### HomeAssistantNotifier
-
-Home Assistant API 客户端：
-
-```python
-from ha_host_monitor.hass import HomeAssistantNotifier
-
-notifier = HomeAssistantNotifier(
-    url="http://localhost:8123",
-    token="your_token"
-)
-
-notifier.update_sensor(
-    entity_id="sensor.test",
-    state=42,
-    attributes={"unit_of_measurement": "%"}
-)
-```
-
-## 性能
-
-- 内存使用：~50-100 MB
-- CPU 使用：最小（空闲时 < 1%）
-- 网络：最小（仅发送更新）
-- 磁盘：可忽略不计（仅日志）
-
-## 限制
-
-- CPU 温度在虚拟机上可能无法工作
-- 某些指标在不同的 Linux 发行版上可能不可用
-- 容器必须有 `/proc` 和 `/sys` 的读取权限
-
-## 许可证
-
-MIT 许可证 - 详见 LICENSE 文件
-
-## 贡献
-
-欢迎贡献！请随时提交问题或拉取请求。
-
-## 支持
-
-如有问题、疑问或建议：
-1. 查看上面的故障排查部分
-2. 查看 `config/error.log` 中的错误详情
-3. 在 GitHub 上提交 issue，包括：
-   - 系统信息
-   - 配置（不含敏感数据）
-   - 错误日志
-   - Docker 版本
-
-## 更新日志
-
-### v0.1.0（初始版本）
-- 初始版本，包含核心监控功能
-- 支持 CPU、内存、磁盘、网络和系统指标
-- Home Assistant REST API 集成
-- YAML 配置
-- Docker 支持
-
-## 致谢
-
-使用的技术：
-- [psutil](https://github.com/giampaolo/psutil) - 系统和进程工具
-- [requests](https://github.com/psf/requests) - HTTP 库
-- [PyYAML](https://github.com/yaml/pyyaml) - YAML 解析器
-- [Home Assistant](https://www.home-assistant.io/) - 开源家庭自动化平台
-
----
-
-**开心监控！** 🚀
-
-**项目开发者**：Manus AI
+本项目使用 [MIT 许可证](LICENSE)。

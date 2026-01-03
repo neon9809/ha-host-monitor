@@ -2,27 +2,26 @@ version: '3.8'
 
 services:
   ha-host-monitor:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # 使用 ghcr.io 镜像（支持 amd64 和 arm64 架构）
+    image: ghcr.io/neon9809/ha-host-monitor:latest
     container_name: ha-host-monitor
     restart: unless-stopped
     
-    # Mount host system directories for monitoring
+    # 挂载主机系统目录用于监控
     volumes:
-      # Mount /proc for system metrics (read-only)
+      # 挂载 /proc 用于系统指标（只读）
       - /proc:/host/proc:ro
-      # Mount /sys for additional system info (read-only)
+      # 挂载 /sys 用于额外的系统信息（只读）
       - /sys:/host/sys:ro
-      # Mount config directory for configuration and error logs
+      # 挂载配置目录用于配置文件和错误日志
       - ./config:/app/config
     
-    # Environment variables (optional, can also be set in config.yml)
+    # 环境变量（可选，也可以在 config.yml 中设置）
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     
-    # Resource limits (optional)
+    # 资源限制（可选）
     # deploy:
     #   resources:
     #     limits:
@@ -32,7 +31,7 @@ services:
     #       cpus: '0.25'
     #       memory: 128M
     
-    # Logging configuration (optional)
+    # 日志配置（可选）
     logging:
       driver: "json-file"
       options:
