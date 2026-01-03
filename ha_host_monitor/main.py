@@ -263,10 +263,17 @@ class HostMonitor:
                             # Format: sensor.{prefix}_{metric_name}
                             metric_name = entity_id.replace(f"sensor.{entity_prefix}_", "")
                             
-                            # Determine device_class for special metrics
+                            # Determine device_class and state_class for special metrics
                             device_class = None
+                            state_class = None
+                            
                             if "boot_time" in metric_name:
                                 device_class = "timestamp"
+                                # Timestamp sensors should not have state_class
+                            elif isinstance(data["state"], (int, float)):
+                                # Add state_class for numeric measurements
+                                # Most metrics are measurements (can go up and down)
+                                state_class = "measurement"
                             
                             # Send state update
                             self.mqtt_reporter.send_state(
@@ -274,6 +281,7 @@ class HostMonitor:
                                 value=data["state"],
                                 unit=data.get("unit_of_measurement"),
                                 device_class=device_class,
+                                state_class=state_class,
                             )
                     else:
                         # REST API mode: batch update

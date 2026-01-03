@@ -86,7 +86,7 @@ class MQTTReporter:
         if rc != 0:
             logger.warning(f"Unexpected disconnect from MQTT broker: {rc}")
 
-    def send_discovery(self, metric_name: str, unit: str = None, device_class: str = None):
+    def send_discovery(self, metric_name: str, unit: str = None, device_class: str = None, state_class: str = None):
         """
         Send MQTT Discovery message for a sensor.
 
@@ -94,6 +94,7 @@ class MQTTReporter:
             metric_name: Name of the metric (e.g., "cpu_percent")
             unit: Unit of measurement (e.g., "%", "B")
             device_class: Home Assistant device class
+            state_class: State class for the sensor (e.g., "measurement")
         """
         if not self.connected:
             logger.warning("Not connected to MQTT broker, skipping discovery")
@@ -131,6 +132,10 @@ class MQTTReporter:
         if device_class:
             payload["device_class"] = device_class
         
+        # Add state class if provided
+        if state_class:
+            payload["state_class"] = state_class
+        
         # Send discovery message (with retain flag)
         try:
             result = self.client.publish(
@@ -148,7 +153,7 @@ class MQTTReporter:
         except Exception as e:
             logger.error(f"Error sending discovery for {metric_name}: {e}")
 
-    def send_state(self, metric_name: str, value: Any, unit: str = None, device_class: str = None):
+    def send_state(self, metric_name: str, value: Any, unit: str = None, device_class: str = None, state_class: str = None):
         """
         Send sensor state update.
 
@@ -157,6 +162,7 @@ class MQTTReporter:
             value: Sensor value
             unit: Unit of measurement
             device_class: Home Assistant device class
+            state_class: State class for the sensor
         """
         if not self.connected:
             logger.warning("Not connected to MQTT broker, skipping state update")
@@ -164,7 +170,7 @@ class MQTTReporter:
 
         # Send discovery if not already sent
         if metric_name not in self._discovered_sensors:
-            self.send_discovery(metric_name, unit, device_class)
+            self.send_discovery(metric_name, unit, device_class, state_class)
 
         # Generate object_id
         unique_id = f"{self.entity_prefix}_{metric_name}"
