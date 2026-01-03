@@ -22,6 +22,15 @@ class ConfigManager:
             "url": "http://localhost:8123",
             "token": "",
             "verify_ssl": True,
+            "report_mode": "rest_api",  # "rest_api" or "mqtt"
+        },
+        "mqtt": {
+            "broker": "localhost",
+            "port": 1883,
+            "username": "",
+            "password": "",
+            "discovery_prefix": "homeassistant",
+            "client_id": "",  # Auto-generated if empty
         },
         "update_frequency": 60,  # seconds
         "host_identifier": "auto",  # "auto" to use hostname, or specify custom name

@@ -13,6 +13,7 @@ from datetime import datetime
 from .config import ConfigManager
 from .collector import MetricsCollector
 from .hass import HomeAssistantNotifier
+from .mqtt_reporter import MQTTReporter
 
 # Configure logging
 logging.basicConfig(
@@ -66,24 +67,49 @@ class HostMonitor:
         # Initialize collector
         self.collector = MetricsCollector(procfs_path="/host/proc")
 
-        # Initialize Home Assistant notifier
+        # Get report mode
         ha_config = self.config.get("home_assistant", {})
         entity_prefix = self.config.get("entity_prefix", "host_monitor")
-        self.notifier = HomeAssistantNotifier(
-            url=ha_config.get("url"),
-            token=ha_config.get("token"),
-            entity_prefix=entity_prefix,
-            verify_ssl=ha_config.get("verify_ssl", True),
-        )
-
-        # Test Home Assistant connection
-        success, error = self.notifier.test_connection()
-        if not success:
-            logger.error(f"Failed to connect to Home Assistant: {error}")
-            self.config_manager._write_error_log(
-                f"Home Assistant connection failed: {error}"
+        report_mode = ha_config.get("report_mode", "rest_api")
+        
+        logger.info(f"Report mode: {report_mode}")
+        
+        # Initialize reporter based on mode
+        self.notifier = None
+        self.mqtt_reporter = None
+        
+        if report_mode == "mqtt":
+            # Initialize MQTT reporter
+            mqtt_config = self.config.get("mqtt", {})
+            self.mqtt_reporter = MQTTReporter(mqtt_config, entity_prefix)
+            
+            # Test MQTT connection
+            if not self.mqtt_reporter.test_connection():
+                logger.error("Failed to connect to MQTT broker")
+                self.config_manager._write_error_log("MQTT broker connection failed")
+                return False
+            
+            # Reconnect for actual use
+            if not self.mqtt_reporter.connect():
+                logger.error("Failed to reconnect to MQTT broker")
+                return False
+        else:
+            # Initialize REST API notifier (default)
+            self.notifier = HomeAssistantNotifier(
+                url=ha_config.get("url"),
+                token=ha_config.get("token"),
+                entity_prefix=entity_prefix,
+                verify_ssl=ha_config.get("verify_ssl", True),
             )
-            return False
+            
+            # Test Home Assistant connection
+            success, error = self.notifier.test_connection()
+            if not success:
+                logger.error(f"Failed to connect to Home Assistant: {error}")
+                self.config_manager._write_error_log(
+                    f"Home Assistant connection failed: {error}"
+                )
+                return False
 
         logger.info("HA Host Monitor initialized successfully")
         return True
@@ -214,14 +240,29 @@ class HostMonitor:
                             "unit_of_measurement": unit,
                         }
 
-                # Update all sensors in Home Assistant
+                # Update all sensors
                 if updates:
-                    results = self.notifier.update_multiple_sensors(updates)
+                    if self.mqtt_reporter:
+                        # MQTT mode: send each sensor separately
+                        for entity_id, data in updates.items():
+                            # Extract metric name from entity_id
+                            # Format: sensor.{prefix}_{metric_name}
+                            metric_name = entity_id.replace(f"sensor.{entity_prefix}_", "")
+                            
+                            # Send state update
+                            self.mqtt_reporter.send_state(
+                                metric_name=metric_name,
+                                value=data["state"],
+                                unit=data.get("unit_of_measurement"),
+                            )
+                    else:
+                        # REST API mode: batch update
+                        results = self.notifier.update_multiple_sensors(updates)
 
-                    # Log any failures
-                    for entity_id, (success, error) in results.items():
-                        if not success:
-                            logger.error(f"Failed to update {entity_id}: {error}")
+                        # Log any failures
+                        for entity_id, (success, error) in results.items():
+                            if not success:
+                                logger.error(f"Failed to update {entity_id}: {error}")
                             self.config_manager._write_error_log(
                                 f"Failed to update {entity_id}: {error}"
                             )
@@ -316,8 +357,10 @@ class HostMonitor:
 
         finally:
             # Cleanup
-            if hasattr(self, "notifier"):
+            if hasattr(self, "notifier") and self.notifier:
                 self.notifier.close()
+            if hasattr(self, "mqtt_reporter") and self.mqtt_reporter:
+                self.mqtt_reporter.disconnect()
 
 
 def main():

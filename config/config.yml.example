@@ -1,89 +1,92 @@
-# HA Host Monitor 配置文件
-# 本文件配置要监控哪些系统指标以及上报频率到 Home Assistant
+# ===================================================================
+# HA Host Monitor - 配置文件示例
+# ===================================================================
 
-# Home Assistant 配置
 home_assistant:
-  # Home Assistant 实例的 URL
-  url: "http://localhost:8123"
-  
-  # Home Assistant 长期访问令牌
-  # 获取方式：设置 -> 设备与服务 -> 创建令牌（右下角）
-  token: "YOUR_LONG_LIVED_TOKEN_HERE"
-  
-  # 是否验证 SSL 证书（自签名证书时设为 false）
+  # 报告模式: "rest_api" 或 "mqtt"
+  # - rest_api: (默认) 直接通过 Home Assistant REST API 上报，配置简单，但实体没有唯一ID。
+  # - mqtt: 通过 MQTT Discovery 上报，实体有唯一ID，但需要 MQTT Broker。
+  report_mode: "rest_api"
+
+  # --- REST API 模式配置 ---
+  # Home Assistant 的 URL
+  url: "http://homeassistant.local:8123"
+  # 长期访问令牌 (Long-Lived Access Token)
+  token: "YOUR_HA_TOKEN"
+  # 是否验证 SSL 证书 (如果使用自签名证书，请设为 false)
   verify_ssl: true
 
-# 全局更新频率（秒）
-# 这是所有指标的默认频率，如果未在单个指标中覆盖
+# --- MQTT 模式配置 ---
+mqtt:
+  # MQTT Broker 的地址
+  broker: "localhost"
+  # MQTT Broker 的端口
+  port: 1883
+  # MQTT 用户名 (可选)
+  username: ""
+  # MQTT 密码 (可选)
+  password: ""
+  # MQTT Discovery 的前缀 (通常保持默认)
+  discovery_prefix: "homeassistant"
+  # MQTT 客户端 ID (可选, 留空则自动生成)
+  client_id: ""
+
+# 全局更新频率 (秒)
+# 单个指标可以覆盖此设置
 update_frequency: 60
 
 # 主机标识符
-# 用于区分多个服务器，避免 entity ID 冲突
-# - "auto": 自动使用主机名（推荐）
-# - 自定义名称: 例如 "web-server-01"、"database-server" 等
-# 
-# 示例：
-#   host_identifier: "auto"           -> entity: sensor.hostname_monitor_cpu_percent
-#   host_identifier: "web-server-01"  -> entity: sensor.web_server_01_monitor_cpu_percent
+# - "auto": (推荐) 自动使用主机名作为前缀 (例如: sensor.my_server_monitor_cpu_percent)
+# - 自定义名称: "web-server-01" (结果: sensor.web_server_01_monitor_cpu_percent)
 host_identifier: "auto"
 
+# ===================================================================
 # 指标配置
-# 每个指标都可以单独启用/禁用和配置
+# ===================================================================
+# enabled: true/false - 是否启用该指标
+# frequency: (可选) 单独设置该指标的更新频率 (秒)
+# ===================================================================
 metrics:
-  
-  # CPU 使用率百分比（0-100）
+  # --- CPU 指标 ---
   cpu_percent:
     enabled: true
-    frequency: 60  # 每 60 秒更新一次
-  
-  # CPU 核心数
+    frequency: 60
   cpu_count:
     enabled: true
-    frequency: 300  # 每 5 分钟更新一次（不经常变化）
-  
-  # 内存使用率百分比（0-100）
+    frequency: 3600 # CPU核心数通常不变，可以设置很长的更新间隔
+  cpu_temp:
+    enabled: false # 默认禁用，需要 lm-sensors
+    frequency: 60
+
+  # --- 内存指标 ---
   memory_percent:
     enabled: true
     frequency: 60
-  
-  # 可用内存字节数
   memory_available:
     enabled: true
     frequency: 60
-  
-  # 根分区磁盘使用率
+
+  # --- 磁盘指标 ---
   disk_usage:
     enabled: true
-    frequency: 300  # 每 5 分钟更新一次
-    path: "/"  # 要检查的路径
-  
-  # 网络 I/O 统计（发送/接收字节数、数据包等）
+    frequency: 300
+    path: "/" # 要监控的磁盘路径
+
+  # --- 网络指标 ---
   network_io:
     enabled: true
     frequency: 60
-  
-  # 系统平均负载（1、5、15 分钟平均值）
+
+  # --- 系统指标 ---
   load_average:
     enabled: true
     frequency: 60
-  
-  # 系统运行时间（秒）
   uptime:
     enabled: true
-    frequency: 300  # 每 5 分钟更新一次
-  
-  # 系统启动时间（ISO 格式）
-  boot_time:
-    enabled: true
-    frequency: 3600  # 每小时更新一次
-  
-  # 运行中的进程数
+    frequency: 300
   process_count:
     enabled: true
-    frequency: 60
-  
-  # CPU 温度（如果传感器可用）
-  # 注意：在某些系统上可能无法工作（如虚拟机）
-  cpu_temp:
-    enabled: false
-    frequency: 60
+    frequency: 300
+  boot_time:
+    enabled: true
+    frequency: 3600

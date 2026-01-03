@@ -19,6 +19,15 @@ _本项目由 [Manus AI](https://manus.im) 完成开发。_
 
 ## 🚀 快速开始
 
+本工具支持两种上报模式：
+
+1.  **REST API** (默认): 配置简单，只需 Home Assistant URL 和 Token。但实体没有 `unique_id`，无法在 UI 中管理。
+2.  **MQTT Discovery**: 实体有 `unique_id`，可以在 UI 中管理。但需要 MQTT Broker。
+
+根据你的需求选择合适的模式。
+
+### 模式 1: REST API (默认)
+
 推荐使用 Docker Compose 进行部署，这是最简单、最直接的方式。
 
 ### 步骤 1: 创建目录和配置文件
@@ -190,3 +199,34 @@ docker logs -f ha-host-monitor
 ## 📄 许可证
 
 本项目使用 [MIT 许可证](LICENSE)。
+
+
+### 模式 2: MQTT Discovery
+
+如果你需要 `unique_id` 支持，可以使用 MQTT Discovery 模式。
+
+#### 前提条件
+
+1.  **MQTT Broker**: 你需要一个正在运行的 MQTT Broker (例如 [Mosquitto](https://mosquitto.org/))。
+2.  **Home Assistant MQTT 集成**: 在 Home Assistant 中设置好 MQTT 集成。
+
+#### 步骤 1: 编辑配置文件
+
+在 `config/config.yml` 中，进行以下修改：
+
+```yaml
+home_assistant:
+  # 1. 将报告模式改为 "mqtt"
+  report_mode: "mqtt"
+
+# 2. 填入你的 MQTT Broker 信息
+mqtt:
+  broker: "your-mqtt-broker-ip"
+  port: 1883
+  username: "your-mqtt-username" # (可选)
+  password: "your-mqtt-password" # (可选)
+```
+
+#### 步骤 2: 启动容器
+
+与 REST API 模式一样，使用 `docker-compose up -d` 启动容器即可。
