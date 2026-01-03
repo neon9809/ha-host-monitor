@@ -182,14 +182,19 @@ class HostMonitor:
 
                     # Handle different metric types
                     if isinstance(value, dict):
-                        # Special handling for load_average: split into 3 sensors
-                        if metric_name == "load_average":
+                        # Special handling for dict metrics: split into individual sensors
+                        if metric_name in ["load_average", "disk_usage", "network_io", "memory_info", "cpu_temp"]:
                             for key, val in value.items():
-                                sub_entity_id = f"sensor.{entity_prefix}_{key}"
+                                sub_entity_id = f"sensor.{entity_prefix}_{metric_name}_{key}"
+                                # Determine unit for sub-metric
+                                sub_unit = self._get_unit_for_submetric(metric_name, key)
                                 updates[sub_entity_id] = {
                                     "state": val,
-                                    "attributes": {"last_updated": datetime.now().isoformat()},
-                                    "unit_of_measurement": None,
+                                    "attributes": {
+                                        "last_updated": datetime.now().isoformat(),
+                                        "parent_metric": metric_name,
+                                    },
+                                    "unit_of_measurement": sub_unit,
                                 }
                         else:
                             # For other dict values, add details to attributes
@@ -250,6 +255,40 @@ class HostMonitor:
             "process_count": "processes",
         }
         return units.get(metric_name)
+
+    def _get_unit_for_submetric(self, metric_name: str, key: str) -> Optional[str]:
+        """Get unit of measurement for a sub-metric.
+
+        Args:
+            metric_name: Name of the parent metric
+            key: Key of the sub-metric
+
+        Returns:
+            Unit of measurement or None
+        """
+        # Define units for sub-metrics
+        if metric_name == "load_average":
+            return None  # Load average has no unit
+        elif metric_name == "disk_usage":
+            if key == "percent":
+                return "%"
+            else:  # total, used, free
+                return "B"
+        elif metric_name == "network_io":
+            if key.startswith("bytes_"):
+                return "B"
+            elif key.startswith("packets_"):
+                return "packets"
+            else:  # errin, errout, dropin, dropout
+                return "errors"
+        elif metric_name == "memory_info":
+            if key == "percent":
+                return "%"
+            else:  # total, available
+                return "B"
+        elif metric_name == "cpu_temp":
+            return "°C"
+        return None
 
     def run(self) -> int:
         """Run the application.
