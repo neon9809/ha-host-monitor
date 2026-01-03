@@ -2,13 +2,22 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies for psutil (required for ARM builds)
+# These will be removed after installation to keep the image small
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        gcc \
+        python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Remove build dependencies to reduce image size
+RUN apt-get purge -y --auto-remove gcc python3-dev && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY ha_host_monitor ./ha_host_monitor
