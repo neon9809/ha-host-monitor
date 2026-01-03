@@ -182,17 +182,32 @@ class HostMonitor:
 
                     # Handle different metric types
                     if isinstance(value, dict):
-                        # For dict values, convert to JSON string and add details to attributes
-                        state = str(value)
-                        attributes.update(value)
+                        # Special handling for load_average: split into 3 sensors
+                        if metric_name == "load_average":
+                            for key, val in value.items():
+                                sub_entity_id = f"sensor.{entity_prefix}_{key}"
+                                updates[sub_entity_id] = {
+                                    "state": val,
+                                    "attributes": {"last_updated": datetime.now().isoformat()},
+                                    "unit_of_measurement": None,
+                                }
+                        else:
+                            # For other dict values, add details to attributes
+                            # Use first value as state or count of items
+                            state = len(value) if value else 0
+                            attributes.update(value)
+                            updates[entity_id] = {
+                                "state": state,
+                                "attributes": attributes,
+                                "unit_of_measurement": unit,
+                            }
                     else:
                         state = value
-
-                    updates[entity_id] = {
-                        "state": state,
-                        "attributes": attributes,
-                        "unit_of_measurement": unit,
-                    }
+                        updates[entity_id] = {
+                            "state": state,
+                            "attributes": attributes,
+                            "unit_of_measurement": unit,
+                        }
 
                 # Update all sensors in Home Assistant
                 if updates:
